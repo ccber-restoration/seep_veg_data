@@ -51,19 +51,34 @@ parent <- parent %>%
   mutate(
     Date = as.Date(Date, format<-"%m/%d/%Y"),
     Year = format(Date, format<-"%Y")
-  ) %>%
-  filter(Site == "harder_seep" | Site == "Seep")
+  )
 
 parent_colnames <- as.data.frame(colnames(parent))
 
 unique(parent$Transect_Name)
 
+parent <- parent %>%
+  unite(col = "Transect_Name", c(Transect_Name, Seep_Transect_Name),
+        sep = "", na.rm = TRUE) %>%
+  mutate(
+    Transect_Name = case_when(
+      grepl(pattern = "WL4WWL4W", x = Transect_Name) ~ "WL4W",
+      grepl(pattern = "WL3WWL3W", x = Transect_Name) ~ "WL3W",
+      grepl(pattern = "U2WU2W", x = Transect_Name) ~ "U2W",
+      TRUE ~ Transect_Name),
+    Site = case_when(
+      grepl(pattern = "Seep", x = Site) ~ "harder_seep",
+      TRUE ~ Site)
+  )
+
+
+
 ## Now create data sets for native, non natives, unknown and other cover to do statistical analysis on.  
-natives<-read.csv("native_plants_begin_1.csv")
+natives<-read_csv("original_data/native_plants_begin_1.csv")
 natives<-natives[,2:7]
 str(natives)
-colnames(natives)<-c("GlobalID","Native_species","unlisted_native","Native_pcover","Native_Notes","MasterID")
-Natives<-merge(parent,natives, by="MasterID", all.x=TRUE, all.y=TRUE)
+colnames(natives)<-c("MasterID","Native_species","unlisted_native","Native_pcover","Native_Notes","MasterID")
+Natives<-merge(parent, natives, by="MasterID", all.x=TRUE, all.y=TRUE)
 Natives$count<-1
 
 nonnatives<-read.csv("nonnative_plants_begin_2.csv")

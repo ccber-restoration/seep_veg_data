@@ -1,11 +1,20 @@
 getwd()
 #install.packages("reshape2")
 #library(reshape2)
-veg<-read.csv("Seep_MasterQuadratdata_3_2025.csv")
+veg<-read_csv("processed_data/Seep_2025.csv")
 veg$Date<-as.Date(veg$Date,format<-"%m/%d/%Y")
 veg$Year<-format(veg$Date,format<-"%Y")
+print(veg)
+colnames(veg)
+start_date <- as.Date("2025-01-01")
+end_date <- as.Date("2025-02-24")
+veg <- veg %>%
+  mutate(Year = case_when(
+    between(Date, start_date, end_date) ~ "2024",
+    TRUE ~ Year
+  )) %>%
+  filter(Transect_Name != "U2W")
 unique(veg$Year)
-veg<-as.data.frame(veg)
 veg<-aggregate(`Percent_Cover`~`PSOC`+Year+Habitat+`Cover_Category`,veg,FUN = sum)
 veg$`PSOC`<-gsub("_"," ",veg$`PSOC`)
 unique(veg$`PSOC`)
@@ -26,19 +35,44 @@ print(veg.nat)
 
 #Native Uplands
 nat.ul<-veg.nat[veg.nat$Habitat=="Upland",]
-nat.ul<-nat.ul[,c(1,2,4,5)]
-nat.ul %>%
-  pivot_wider(id_cols = !Cover_Category,names_from = Year, values_from = `Percent_Cover`)
+nat.ul<-nat.ul[,c(1,2,5)]
+nat.ul<-nat.ul %>%
+  pivot_wider(names_from = Year, values_from = `Percent_Cover`)
 nat.ul[is.na(nat.ul)] <- 0
 nat.ul
 
 nat.ul.l<-nat.ul %>% 
-  pivot_longer(cols = !`PSOC`, names_to = "Monitoring Year",values_to = "presence")
+  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Presence")
 nat.ul.l<-nat.ul.l[nat.ul.l$`PSOC`!="NA",]
 
-nat.ul.l$presence<-as.logical(nat.ul.l$presence)
-ggplot(nat.ul.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Peripheral Uplands Species")+theme_bw()
+nat.ul.l$Presence<-as.logical(nat.ul.l$Presence)
+ggplot(nat.ul.l, aes(x=Year, y=`PSOC`, fill=Presence)) + geom_tile() +
+  scale_y_discrete(limits = rev) +
+  ggtitle("Native species recorded in \nupland habitat each year") + 
+  ylab("Species") + theme_bw()
 
+#Native Wetplands
+nat.wl<-veg.nat[veg.nat$Habitat=="Wetland",]
+nat.wl<-nat.wl[,c(1,2,5)]
+nat.wl<-nat.wl %>%
+  pivot_wider(names_from = Year, values_from = `Percent_Cover`)
+nat.wl[is.na(nat.wl)] <- 0
+nat.wl
+
+nat.wl.l<-nat.wl %>% 
+  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Presence")
+nat.wl.l<-nat.wl.l[nat.wl.l$`PSOC`!="NA",]
+
+nat.wl.l$Presence<-as.logical(nat.wl.l$Presence)
+nat_list <- ggplot(nat.wl.l, aes(x=Year, y=`PSOC`, fill=Presence))+
+  theme_minimal() +
+  geom_tile(color = "black", linewidth = 0.2) +
+  scale_y_discrete(limits = rev) +
+  ggtitle("Native species recorded in \nupland habitat each year") + 
+  ylab("Species")
+nat_list
+ggsave("figures/Native_Plant_Presence_By_Year.png", nat_list, width=8 , 
+       height=6 , units="in" , dpi=300)
 
 unique(veg$Habitat)
 #Native Peripheral Uplands
