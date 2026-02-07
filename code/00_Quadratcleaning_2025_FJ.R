@@ -508,7 +508,13 @@ write.csv(df,"processed_data/MasterQuadratdata_2026-02-05.csv")
 
 #filter to just the Seep
 seep<-df %>% 
-  filter(Site == "harder_seep")
+  filter(Site == "harder_seep") %>% 
+  #adding a project phase column to separate out data later
+  mutate(Phase = case_when(
+    Transect_Name == "WL4W" | Transect_Name == "WL3W" ~ "Phase 2",
+    Transect_Name == "U2W" ~ NA,
+    TRUE ~ "Phase 1"
+  ))
 # 4,601 observations
 
 

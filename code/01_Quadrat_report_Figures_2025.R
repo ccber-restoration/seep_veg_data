@@ -1,3 +1,6 @@
+library(ggfittext)
+library(scales)
+
 getwd()
 veg<-read_csv("processed_data/Seep_2025.csv")
 veg$Date<-as.Date(veg$Date,format<-"%m/%d/%Y")
@@ -12,90 +15,158 @@ veg <- veg %>%
     TRUE ~ Year
   )) %>%
   filter(Transect_Name != "U2W")
-vegNNN<-veg[veg$Cover_Category=="NATIVE COVER"|veg$Cover_Category=="NON-NATIVE COVER",]
+vegNNN<-veg[veg$Cover_Category=="NATIVE COVER" | 
+              veg$Cover_Category=="NON-NATIVE COVER",]
 unique(vegNNN$Cover_Category)
 
-vegNNN<-vegNNN[vegNNN$PSOC!="Sum of Native Cover" & vegNNN$PSOC!="Sum of Non-Native Cover",]
-vegNNN<-aggregate(Percent_Cover~Habitat+Year+Cover_Category+Transect_Distance+
+vegNNN<-vegNNN[vegNNN$PSOC!="Sum of Native Cover" & 
+                 vegNNN$PSOC!="Sum of Non-Native Cover",]
+vegNNN<-aggregate(Percent_Cover~Phase+Habitat+Year+Cover_Category+Transect_Distance+
                   Transect_Name,vegNNN,FUN=sum)
 
-vegNNNagg<-aggregate(Percent_Cover~Habitat+Year+Cover_Category,vegNNN,FUN=mean)
+vegNNNagg<-aggregate(Percent_Cover~Phase+Habitat+Year+Cover_Category,vegNNN,FUN=mean)
 unique(vegNNNagg$Habitat)
 
-vegNNNagg$Percent_Cover<-as.character(vegNNNagg$Percent_Cover)
-vegNNNagg$Percent_Cover<-as.numeric(vegNNNagg$Percent_Cover)
-unique(vegNNNagg$Percent_Cover)
+
+vegNNNagg <- vegNNNagg %>%
+  mutate(Percent_Cover = round(Percent_Cover, 1))
+unique(vegNNNagg)
 
 #Absolute
-for (i in unique(vegNNNagg$Habitat)){
-  p<-vegNNNagg[vegNNNagg$Habitat==i,]
-  q<- ggplot(p,aes(Year,Percent_Cover,fill=Cover_Category)) +
-    geom_bar(position="dodge",stat="identity", color="black")+
-    ggtitle(p$Habitat, "Average Absolute Percent Cover")+ theme_bw()+ylim(0,170)+
-    theme(axis.text.x = element_text(angle = 90))+ theme(axis.text.x = element_text(angle = 0, size = 14),
-                                                         axis.text.y = element_text(size=14),
-                                                         axis.title.y = element_text(size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
-                                                         axis.title.x=element_text(size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
-                                                         title =element_text(size=15, face='bold'))+
-    scale_fill_manual("Cover Type", values = c("NATIVE COVER" = "darkgreen", "NON-NATIVE COVER" = "red"))
-  ggsave(filename=paste("figures/Absolute_NNN_", i, ".jpg", sep="") , plot=q , width=8 , height=6 , units="in" , dpi=300)
-  print(q)
+unique_phase <- unique(vegNNNagg$Phase)
+unique_habitat <- unique(vegNNNagg$Habitat)
+
+for (i in unique_phase) {
+  for (j in unique_habitat) {
+    q <- ggplot(data = subset(vegNNNagg, Phase == i & Habitat == j),
+               aes(Year, Percent_Cover, fill=Cover_Category, 
+                   label=Percent_Cover)) +
+      geom_bar(position="dodge", stat="identity", color="black") +
+      geom_bar_text(aes(label = label_percent(accuracy = 0.1, scale = 1)
+                        (Percent_Cover)),
+                    position = "dodge", outside = TRUE,
+                    place = 'top', min.size = 6,
+                    fontface='bold', contrast = TRUE) +
+      ggtitle("Average Absolute Percent Cover", paste(i, j)) +
+      theme_bw() + 
+      theme(axis.text.x = element_text(angle = 90))+
+      theme(axis.text.x = element_text(angle = 0, size = 12),
+            axis.text.y = element_text(size=12),
+            axis.title.y = element_text(
+              size=14, margin = margin(t = 0, r = 10, b = 0, l = 20)),
+            axis.title.x=element_text(
+              size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
+            title = element_text(size=15, face='bold'),
+            plot.subtitle = element_text(size=12, face='bold')) +
+      scale_fill_manual(
+        "Cover Type", values = c("NATIVE COVER" = "darkgreen",
+                                 "NON-NATIVE COVER" = "red"))
+    print(q)
+    
+    filename <- file.path("figures", paste0("Absolute_NNN_", i,
+                                            "_", j, ".png"))
+    ggsave(filename=filename, plot=q , width=8 , height=6 , units="in" , dpi=300)
+  }
 }
-
-
 
 
 #Relative
-for (i in unique(vegNNNagg$Habitat)){
-  p<-vegNNNagg[vegNNNagg$Habitat==i,]
-  q<- ggplot(p,aes(Year,Percent_Cover,fill=Cover_Category)) +
-    geom_bar(position="fill",stat="identity", color="black")+theme_bw()+
-    ggtitle(p$Habitat, "Average Relative Percent Cover")+ theme(axis.text.x = element_text(angle = 0, size = 14),
-                              axis.text.y = element_text(size=14),
-                              axis.title.y = element_text(size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
-                              axis.title.x=element_text(size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
-                              title =element_text(size=15, face='bold'))+ 
-    scale_fill_manual("Cover Type", values = c("NATIVE COVER" = "darkgreen", "NON-NATIVE COVER" = "red", "BARE GROUND" = "tan", "OTHER COVER" = "burlywood4", "THATCH COVER" = "grey"))
-  print(q)
-  ggsave(filename=paste("figures/Relative_cover_", i, ".jpg", sep="") , plot=q , width=12 , height=6 , units="in" , dpi=300)
+for (i in unique_phase) {
+  for (j in unique_habitat) {
+    p <- subset(vegNNNagg, Phase == i & Habitat == j) %>%
+      group_by(Year) %>%
+      mutate(
+        rel_percent_cover = round((Percent_Cover / sum(Percent_Cover)*100), 1)
+        ) %>%
+      ungroup()
+    
+    q <- ggplot(p, aes(Year, Percent_Cover, fill=Cover_Category,
+                       label = rel_percent_cover)) +
+      geom_bar(position="fill", stat="identity", color="black") +
+      geom_bar_text(aes(label = label_percent(accuracy = 0.1, scale = 1)
+                        (rel_percent_cover)), 
+                    outside = TRUE, place = 'center', 
+                    min.size = 6, 
+                    position = "fill",
+                    fontface='bold',
+                    contrast = TRUE) +
+      ggtitle("Average Relative Percent Cover", paste(i, j)) +
+      theme_bw() + 
+      theme(axis.text.x = element_text(angle = 90))+
+      theme(axis.text.x = element_text(angle = 0, size = 12),
+            axis.text.y = element_text(size=12),
+            axis.title.y = element_text(
+              size=14, margin = margin(t = 0, r = 10, b = 0, l = 20)),
+            axis.title.x=element_text(
+              size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
+            title = element_text(size=15, face='bold'),
+            plot.subtitle = element_text(size=12, face='bold')) +
+      scale_fill_manual(
+        "Cover Type", values = c("NATIVE COVER" = "darkgreen",
+                                 "NON-NATIVE COVER" = "red"))
+    print(q)
+    
+    filename <- file.path("figures", paste0("Relative_NNN_", i,
+                                            "_", j, ".png"))
+    ggsave(filename=filename, plot=q , width=8 , height=6 , units="in" , dpi=300)
+  }
 }
-
-
 
 
 #Relative including bare ground and thatch
 unique(veg$Habitat)
-veg<- within(veg, Habitat[Habitat == "Vernal Pool"] <- 'Vernal Pools')
 vegsums<-veg[veg$PSOC=="Bare Ground"|veg$PSOC=="Sum of Thatch Cover"|
                veg$PSOC=="Sum of Non-Native Cover"|veg$PSOC=="Sum of Native Cover"|
                veg$PSOC=="Sum of Other Cover",]
 unique(vegsums$PSOC)
-vegsumsagg<-aggregate(Percent_Cover~Cover_Category+Habitat+Year,vegsums,FUN=mean)
+vegsumsagg<-aggregate(Percent_Cover~Cover_Category+Phase+Habitat+Year,vegsums,FUN=mean)
 
-for (i in unique(vegsumsagg$Habitat)){
-  p<-vegsumsagg[vegsumsagg$Habitat==i,]
-  q<- ggplot(p,aes(Year, Percent_Cover, fill=Cover_Category)) +
-    geom_bar(position="fill",stat="identity", color="black") + 
-    theme_bw() +
-    ggtitle(p$Habitat, "Average Relative Percent Cover")+ theme(axis.text.x = element_text(angle = 0, size = 14),
-                              axis.text.y = element_text(size=14),
-                              axis.title.y = element_text(
-                                size=14,
-                                margin = margin(t = 0, r = 10, b = 0, l = 20)),
-                              axis.title.x=element_text(
-                                size=14,
-                                margin = margin(t = 0, r = 10, b = 0, l = 20)),
-                              title =element_text(size=15, face='bold')) + 
-    scale_fill_manual("Cover Type", 
-                      values = c("NATIVE COVER" = "darkgreen", 
-                                 "NON-NATIVE COVER" = "red", 
-                                 "BARE GROUND" = "tan", 
-                                 "OTHER COVER" = "burlywood4", 
-                                 "THATCH" = "grey"))
-  print(q)
-  ggsave(filename=paste("figures/Relative_allcover_", i, ".jpg", sep="") , plot=q , width=12 , height=6 , units="in" , dpi=300)
+unq_phase_sum <- unique(vegsumsagg$Phase)
+unq_hab_sum <- unique(vegsumsagg$Habitat)
+
+
+for (i in unq_phase_sum) {
+  for (j in unq_hab_sum) {
+    p <- subset(vegsumsagg, Phase == i & Habitat == j) %>%
+      group_by(Year) %>%
+      mutate(
+        rel_percent_cover = round((Percent_Cover / sum(Percent_Cover)*100), 1)
+      ) %>%
+      ungroup()
+    
+    q <- ggplot(p, aes(Year, Percent_Cover, fill=Cover_Category)) +
+      geom_bar(position="fill", stat="identity", color="black") +
+      geom_bar_text(aes(label = label_percent(accuracy = 0.1, scale = 1)
+                        (rel_percent_cover)), 
+                    outside = TRUE, place = 'center', 
+                    min.size = 6, 
+                    position = "fill",
+                    fontface='bold',
+                    contrast = TRUE) +
+      ggtitle("Average Relative Percent Cover", paste(i, j)) +
+      theme_bw() + 
+      theme(axis.text.x = element_text(angle = 90))+
+      theme(axis.text.x = element_text(angle = 0, size = 12),
+            axis.text.y = element_text(size=12),
+            axis.title.y = element_text(
+              size=14, margin = margin(t = 0, r = 10, b = 0, l = 20)),
+            axis.title.x=element_text(
+              size=14,margin = margin(t = 0, r = 10, b = 0, l = 20)),
+            title = element_text(size=15, face='bold'),
+            plot.subtitle = element_text(size=12, face='bold')) +
+      scale_fill_manual("Cover Type", 
+                        values = c("NATIVE COVER" = "darkgreen", 
+                                   "NON-NATIVE COVER" = "red", 
+                                   "BARE GROUND" = "tan", 
+                                   "OTHER COVER" = "burlywood4", 
+                                   "THATCH" = "grey"))
+    print(q)
+    
+    filename <- file.path("figures", paste0("Relative_AllCover_", i,
+                                            "_", j, ".png"))
+    ggsave(filename=filename, plot=q , width=8 , height=6 , units="in" , dpi=300)
+  }
 }
-
 
 
 ### for vegetation table

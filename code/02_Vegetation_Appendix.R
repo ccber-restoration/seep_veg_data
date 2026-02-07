@@ -10,11 +10,16 @@ start_date <- as.Date("2025-01-01")
 end_date <- as.Date("2025-02-24")
 veg <- veg %>%
   mutate(Year = case_when(
-    between(Date, start_date, end_date) ~ "2024",
-    TRUE ~ Year
-  )) %>%
+          between(Date, start_date, end_date) ~ "2024",
+          TRUE ~ Year),
+         PSOC = case_when(
+           grepl(pattern = "Aparagus asparagoides", x = PSOC) ~ "Asparagus_asparagoides",
+           grepl(pattern = "Asparagus asparagoides", x = PSOC) ~ "Asparagus_asparagoides",
+           TRUE ~ PSOC)
+         ) %>%
   filter(Transect_Name != "U2W")
 unique(veg$Year)
+## FIX ME: aggregated totals too high
 veg<-aggregate(`Percent_Cover`~`PSOC`+Year+Habitat+`Cover_Category`,veg,FUN = sum)
 veg$`PSOC`<-gsub("_"," ",veg$`PSOC`)
 unique(veg$`PSOC`)
@@ -22,18 +27,15 @@ veg<-veg %>% drop_na(`PSOC`)
 
   
 
-#Natives
-veg.nat<-veg[veg$`Cover_Category`=="NATIVE COVER",]
-veg.nat<-veg.nat[veg.nat$`PSOC`!="Sum of Native Cover"&veg.nat$`PSOC`!="",]
+#Natives -----
+veg.nat<-veg[veg$`Cover_Category`=="NATIVE COVER",] %>%
+  filter(PSOC!="Sum of Native Cover" & PSOC!="NA")
 unique(veg.nat$`PSOC`)
-veg.nat<- within(veg.nat, PSOC[PSOC == "Cardamine_olidosperna"] <- 'Cardamine_oligosperma')
-veg.nat<- within(veg.nat, PSOC[PSOC == "Sparganium_Eurycarpum"] <- 'Sparganium_eurycarpum')
-veg.nat<- within(veg.nat, PSOC[PSOC == "Spergula_marina"] <- 'Spergularia_marina')
-veg.nat<-aggregate(`Percent_Cover`~Year+`PSOC`+Habitat+`Cover_Category`,veg.nat,FUN=sum)
+veg.nat<-aggregate(Percent_Cover ~ Year+`PSOC`+Habitat, veg.nat, FUN=mean)
 unique(veg.nat$`PSOC`)
 print(veg.nat)
 
-#Native Uplands
+#Native Uplands ----
 nat.ul<-veg.nat[veg.nat$Habitat=="Upland",]
 nat.ul<-nat.ul[,c(1,2,5)]
 nat.ul<-nat.ul %>%
@@ -42,16 +44,30 @@ nat.ul[is.na(nat.ul)] <- 0
 nat.ul
 
 nat.ul.l<-nat.ul %>% 
-  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Presence")
-nat.ul.l<-nat.ul.l[nat.ul.l$`PSOC`!="NA",]
+  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Percent_Cover")
+nat.ul.l<-nat.ul.l[nat.ul.l$`PSOC`!="NA",] %>%
+  mutate(Percent_Cover = round(Percent_Cover, 1))
 
-nat.ul.l$Presence<-as.logical(nat.ul.l$Presence)
-ggplot(nat.ul.l, aes(x=Year, y=`PSOC`, fill=Presence)) + geom_tile() +
+nat.ul.l$Presence<-as.logical(nat.ul.l$Percent_Cover)
+nat_ul_list <-ggplot(nat.ul.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
+  theme_minimal() +
+  geom_tile(color = "black", linewidth = 0.2) +
+  scale_fill_gradientn(colours = c("white", "darkseagreen1", "chartreuse4"),
+                       values = scales::rescale(c(0,1,78)),
+                       limits=c(0, 100)) +
+  geom_text(data = nat.ul.l %>% filter(Percent_Cover > 0),
+    aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+        color = "black", size = 3) +
   scale_y_discrete(limits = rev) +
-  ggtitle("Native species recorded in \nupland habitat each year") + 
-  ylab("Species") + theme_bw()
+  ggtitle("Native species recorded in upland habitat each year") + 
+  labs(fill = "Average absolute \npercent cover") +
+  ylab("Species")
+nat_ul_list
+ggsave("figures/Native_Plant_Presence_By_Year_Uplands.png", nat_ul_list, width=8 , 
+       height=6 , units="in" , dpi=300)
 
-#Native Wetplands
+
+#Native Wetlands ----
 nat.wl<-veg.nat[veg.nat$Habitat=="Wetland",]
 nat.wl<-nat.wl[,c(1,2,5)]
 nat.wl<-nat.wl %>%
@@ -60,200 +76,85 @@ nat.wl[is.na(nat.wl)] <- 0
 nat.wl
 
 nat.wl.l<-nat.wl %>% 
-  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Presence")
-nat.wl.l<-nat.wl.l[nat.wl.l$`PSOC`!="NA",]
+  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Percent_Cover")
+nat.wl.l<-nat.wl.l[nat.wl.l$`PSOC`!="NA",] %>%
+  mutate(Percent_Cover = round(Percent_Cover, 1))
 
-nat.wl.l$Presence<-as.logical(nat.wl.l$Presence)
-nat_list <- ggplot(nat.wl.l, aes(x=Year, y=`PSOC`, fill=Presence))+
+nat.wl.l$Presence<-as.logical(nat.wl.l$Percent_Cover)
+nat_wl_list <-ggplot(nat.wl.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
   theme_minimal() +
   geom_tile(color = "black", linewidth = 0.2) +
+  scale_fill_gradientn(colours = c("white", "darkseagreen1", "chartreuse4"),
+                       values = scales::rescale(c(0,1,90)),
+                       limits=c(0, 100)) +
+  geom_text(data = nat.wl.l %>% filter(Percent_Cover > 0),
+            aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+            color = "black", size = 3) +
   scale_y_discrete(limits = rev) +
-  ggtitle("Native species recorded in \nupland habitat each year") + 
+  ggtitle("Native species recorded in wetland habitat each year") + 
+  labs(fill = "Average absolute \npercent cover") +
   ylab("Species")
-nat_list
-ggsave("figures/Native_Plant_Presence_By_Year.png", nat_list, width=8 , 
+nat_wl_list
+ggsave("figures/Native_Plant_Presence_By_Year_Wetlands.png", nat_wl_list, width=8 , 
+       height=6.5 , units="in" , dpi=300)
+
+
+################################################################################################
+################################################################################################
+################################################################################################
+#Nonnative Species ----
+
+veg.NON<-veg[veg$`Cover_Category`=="NON-NATIVE COVER",] %>%
+  filter(PSOC!="Sum of Non-Native Cover" & PSOC!="NA")
+veg.NON<-aggregate(`Percent_Cover`~ Year+`PSOC`+Habitat+`Cover_Category`,veg.NON,FUN=mean)
+unique(veg.NON$PSOC)
+print(veg.NON)
+
+#Non-native Uplands
+NON.ul<-veg.NON[veg.NON$Habitat=="Upland",]
+NON.ul<-NON.ul[,c(1,2,5)]
+NON.ul<-NON.ul %>%
+  pivot_wider(names_from = Year, values_from = `Percent_Cover`)
+NON.ul[is.na(NON.ul)] <- 0
+NON.ul
+
+NON.ul.l<-NON.ul %>% 
+  pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Percent_Cover")
+NON.ul.l<-NON.ul.l[NON.ul.l$`PSOC`!="NA",] %>%
+  mutate(Percent_Cover = round(Percent_Cover, 1))
+
+NON.ul.l$Presence<-as.logical(NON.ul.l$Percent_Cover)
+NON_ul_list <-ggplot(NON.ul.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
+  theme_minimal() +
+  geom_tile(color = "black", linewidth = 0.2) +
+  scale_fill_gradientn(colours = c("white", "darkseagreen1", "chartreuse4"),
+                       values = scales::rescale(c(0,1,78)),
+                       limits=c(0, 100)) +
+  geom_text(data = NON.ul.l %>% filter(Percent_Cover > 0),
+            aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+            color = "black", size = 3) +
+  scale_y_discrete(limits = rev) +
+  ggtitle("Non-native species recorded in upland habitat each year") + 
+  labs(fill = "Average absolute \npercent cover") +
+  ylab("Species")
+NON_ul_list
+ggsave("figures/Nonnative_Plant_Presence_By_Year_Uplands.png", NON_ul_list, width=8 , 
        height=6 , units="in" , dpi=300)
 
-unique(veg$Habitat)
-#Native Peripheral Uplands
-veg.nat.pg<-veg.nat[veg.nat$Habitat=="Perennial Grassland" ,]
-veg.nat.pg<-veg.nat.pg[,c(1,2,4,5)]
-nat.pg<-veg.nat.pg %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.pg[is.na(nat.pg)] <- 0
-nat.pg
-nat.pg.l<-nat.pg %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.pg.l$presence[nat.pg.l$presence > 0.1] <- 1
-nat.pg.l<-nat.pg.l[nat.pg.l$`PSOC`!="NA",]
-
-nat.pg.l$presence<-as.logical(nat.pg.l$presence)
-ggplot(nat.pg.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Perennial Grassland Species")+theme_bw()
-
-
-unique(veg$Habitat)
-#Native "Remnant Salt Marsh"
-veg.nat.RSM<-veg.nat[veg.nat$Habitat=="Remnant Salt Marsh" ,]
-veg.nat.RSM<-veg.nat.RSM[,c(1,2,4,5)]
-str(veg.nat.pg)
-unique(veg.nat.RSM$`Percent_Cover`)
-str(veg.nat.RSM)
-nat.RSM<-veg.nat.RSM %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.RSM[is.na(nat.RSM)] <- 0
-nat.RSM.l<-nat.RSM %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.RSM.l$presence[nat.RSM.l$presence > 0.1] <- 1
-nat.RSM.l<-nat.RSM.l[nat.RSM.l$`PSOC`!="NA",]
-
-nat.RSM.l$presence<-as.logical(nat.RSM.l$presence)
-ggplot(nat.RSM.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Remnant Salt Marsh Species")+theme_bw()
-
-
-unique(veg$Habitat)
-#Native "Salt Marsh" 
-veg.nat.SM<-veg.nat[veg.nat$Habitat=="Salt Marsh" ,]
-veg.nat.SM<-veg.nat.SM[,c(1,2,4,5)]
-nat.SM<-veg.nat.SM %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.SM[is.na(nat.SM)] <- 0
-nat.SM
-nat.SM.l<-nat.SM %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.SM.l$presence[nat.SM.l$presence > 0.1] <- 1
-nat.SM.l<-nat.SM.l[nat.SM.l$`PSOC`!="NA",]
-
-nat.SM.l$presence<-as.logical(nat.SM.l$presence)
-ggplot(nat.SM.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Salt Marsh Species")+theme_bw()
-
-
-unique(veg$Habitat)
-#Native "Sand Flat"
-veg.nat.SF<-veg.nat[veg.nat$Habitat=="Sand Flat" ,]
-veg.nat.SF<-veg.nat.SF[,c(1,2,4,5)]
-nat.SF<-veg.nat.SF %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.SF[is.na(nat.SF)] <- 0
-nat.SF
-nat.SF.l<-nat.SF %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.SF.l$presence[nat.SF.l$presence > 0.1] <- 1
-nat.SF.l<-nat.SF.l[nat.SF.l$`PSOC`!="NA",]
-
-nat.SF.l$presence<-as.logical(nat.SF.l$presence)
-ggplot(nat.SF.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Sand Flat Species")+theme_bw()
-
-
-unique(veg$Habitat)
-#Native "Sandy Annuals" 
-veg.nat.SA<-veg.nat[veg.nat$Habitat=="Sandy Annuals"  ,]
-veg.nat.SA<-veg.nat.SA[,c(1,2,4,5)]
-nat.SA<-veg.nat.SA %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.SA[is.na(nat.SA)] <- 0
-nat.SA
-nat.SA.l<-nat.SA %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.SA.l$presence[nat.SA.l$presence > 0.1] <- 1
-nat.SA.l<-nat.SA.l[nat.SA.l$`PSOC`!="NA",]
-
-nat.SA.l$presence<-as.logical(nat.SA.l$presence)
-ggplot(nat.SA.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Sandy Annuals Species")+theme_bw()
-
-
-unique(veg$Habitat)
-#Native "Seasonal Brackish Marsh" 
-veg.nat.SBM<-veg.nat[veg.nat$Habitat=="Seasonal Brackish Marsh"  ,]
-veg.nat.SBM<-veg.nat.SBM[,c(1,2,4,5)]
-nat.SBM<-veg.nat.SBM %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.SBM[is.na(nat.SBM)] <- 0
-nat.SBM
-nat.SBM.l<-nat.SBM %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.SBM.l$presence[nat.SBM.l$presence > 0.1] <- 1
-nat.SBM.l<-nat.SBM.l[nat.SBM.l$`PSOC`!="NA",]
-
-nat.SBM.l$presence<-as.logical(nat.SBM.l$presence)
-ggplot(nat.SBM.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Seasonal Brackish Marsh Species")+theme_bw()
-
-
-unique(veg$Habitat)
-#Native "Seasonal Freshwater Pond"
-veg.nat.SFP<-veg.nat[veg.nat$Habitat=="Seasonal Freshwater Pond"  ,]
-veg.nat.SFP<-veg.nat.SFP[,c(1,2,4,5)]
-nat.SFP<-veg.nat.SFP %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.SFP[is.na(nat.SFP)] <- 0
-nat.SFP
-nat.SFP.l<-nat.SFP %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.SFP.l$presence[nat.SFP.l$presence > 0.1] <- 1
-nat.SFP.l<-nat.SFP.l[nat.SFP.l$`PSOC`!="NA",]
-
-nat.SFP.l$presence<-as.logical(nat.SFP.l$presence)
-ggplot(nat.SFP.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Seasonal Freshwater Pond Species")+theme_bw()
-
-unique(veg$Habitat)
-#Native "Transition/High Salt Marsh"
-veg.nat.THSM<-veg.nat[veg.nat$Habitat=="Transition/High Salt Marsh"  ,]
-veg.nat.THSM<-veg.nat.THSM[,c(1,2,4,5)]
-nat.THSM<-veg.nat.THSM %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.THSM[is.na(nat.THSM)] <- 0
-nat.THSM
-nat.THSM.l<-nat.THSM %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.THSM.l$presence[nat.THSM.l$presence > 0.1] <- 1
-nat.THSM.l<-nat.THSM.l[nat.THSM.l$`PSOC`!="NA",]
-
-nat.THSM.l$presence<-as.logical(nat.THSM.l$presence)
-ggplot(nat.THSM.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Transition/High Salt Marsh Species")+theme_bw()
-
-unique(veg$Habitat)
-#Native "Vernal Pools"
-veg.nat.VP<-veg.nat[veg.nat$Habitat=="Vernal Pools"  ,]
-veg.nat.VP<-veg.nat.VP[,c(1,2,4,5)]
-nat.VP<-veg.nat.VP %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-nat.VP[is.na(nat.VP)] <- 0
-nat.VP
-nat.VP.l<-nat.VP %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-nat.VP.l$presence[nat.VP.l$presence > 0.1] <- 1
-nat.VP.l<-nat.VP.l[nat.VP.l$`PSOC`!="NA",]
-
-nat.VP.l$presence<-as.logical(nat.VP.l$presence)
-ggplot(nat.VP.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Native Vernal Pool Species")+theme_bw()
-
-
-
-################################################################################################
-################################################################################################
-################################################################################################
-#Nonnative Species
-veg.NON<-veg[veg$`Cover_Category`=="NON-NATIVE COVER",]
-veg.NON<-veg.NON[veg.NON$`PSOC`!="Sum of Non-Native Cover"&veg.NON$`PSOC`!="NA",]
-veg.NON$`PSOC`<-gsub("sp.","",veg.NON$`PSOC`)
-veg.NON$`PSOC`<-veg.NON[veg.NON$`PSOC`!="unlisted",]
-unique(veg.NON$`PSOC`)
-veg.NON<-aggregate(`Percent_Cover`~Year+`PSOC`+Habitat+`Cover_Category`,veg.NON,FUN=sum)
-
-#Native Peripheral Uplands
-veg.NON.pu<-veg.NON[veg.NON$Habitat=="Peripheral Uplands",]
-veg.NON.pu<-veg.NON.pu[,c(1,2,4,5)]
-NON.pu<-veg.NON.pu %>%
-  pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
-NON.pu[is.na(NON.pu)] <- 0
-NON.pu
-NON.pu.l<-NON.pu %>% 
-  pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
-NON.pu.l$presence[NON.pu.l$presence > 0.1] <- 1
-NON.pu.l<-NON.pu.l[NON.pu.l$`PSOC`!="NA",]
-
-NON.pu.l$presence<-as.logical(NON.pu.l$presence)
-ggplot(NON.pu.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Non-Native Peripheral Uplands Species")+theme_bw()
-
+# veg.NON.pu<-veg.NON[veg.NON$Habitat=="Peripheral Uplands",]
+# veg.NON.pu<-veg.NON.pu[,c(1,2,4,5)]
+# NON.pu<-veg.NON.pu %>%
+#   pivot_wider(!`Cover_Category`,names_from = Year, values_from = `Percent_Cover`)
+# NON.pu[is.na(NON.pu)] <- 0
+# NON.pu
+# NON.pu.l<-NON.pu %>% 
+#   pivot_longer(!`PSOC`, names_to = "Year",values_to = "presence")
+# NON.pu.l$presence[NON.pu.l$presence > 0.1] <- 1
+# NON.pu.l<-NON.pu.l[NON.pu.l$`PSOC`!="NA",]
+# 
+# NON.pu.l$presence<-as.logical(NON.pu.l$presence)
+# ggplot(NON.pu.l, aes(x=Year, y=`PSOC`, fill=presence)) + geom_tile()+ggtitle("Non-Native Peripheral Uplands Species")+theme_bw()
+# 
 
 unique(veg$Habitat)
 #NONive perennial grassland
