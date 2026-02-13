@@ -26,7 +26,7 @@ The data used in this repository is collected through Survey123 "[CCBER VegMonit
 
 After running 00_general_quadrat_cleaning.R in the ncos-vegetation-monitoring repo, add the cleaned CSV to this repository in the processed_data folder and use it as an input for other scripts.
 
-    - 01_Quadrat_report_Figures.R: Generates bar charts of absolute & relative percent cover for each phase/habitat.
-    - 02_Vegetation_Appendix.R: Creates species list figures for natives and non-natives in the upland and wetland habitats, showing their average percent cover per monitoring year.
+- 01_Quadrat_report_Figures.R: Generates bar charts of absolute & relative percent cover for each phase/habitat.
+- 02_Vegetation_Appendix.R: Creates species list figures for natives and non-natives in the upland and wetland habitats, showing their average percent cover per monitoring year.
 
 
