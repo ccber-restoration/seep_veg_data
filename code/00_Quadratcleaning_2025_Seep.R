@@ -1,5 +1,6 @@
-## This script imports csv files downloaded from the survey123 quadrat veg survey (CCBER VegMonitoring QuadratTransects)
-#and processes into analyzable data
+## This script imports csv files downloaded from the survey123 quadrat veg 
+## survey (CCBER VegMonitoring QuadratTransects) and processes into analyzable
+## data
 
 #Provenance:
 #This script was originally uploaded to Box by Alison Rickard in November 2024
