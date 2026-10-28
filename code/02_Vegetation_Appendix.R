@@ -3,7 +3,7 @@ getwd()
 #library(reshape2)
 
 # read in cleaned data
-veg<-read_csv("processed_data/Seep_2025.csv")
+veg<-read_csv("processed_data/Seep_2026.csv")
 # format dates
 veg$Date<-as.Date(veg$Date,format<-"%m/%d/%Y")
 veg$Year<-format(veg$Date,format<-"%Y")
@@ -39,12 +39,16 @@ veg <- veg %>%
 # find the sum percent cover of each species in each transect
 veg_avg<-aggregate(Percent_Cover ~ PSOC + Year + Habitat + Transect_Name +
                      Cover_Category, veg, FUN=sum) %>%
-  # divide by number of quadrats in each transect (16) to find the average
-  mutate(Percent_Cover = Percent_Cover / 16)
+  # divide by number of quadrats in each transect (16) to find the average;
+  # 11 quadrats in each transect for 2026
+  mutate(Percent_Cover = case_when(
+    Year == "2026" ~ Percent_Cover / 11,
+    Year != "2026" ~ Percent_Cover / 16))
 
 # average by habitat
 veg_avg_sum<-aggregate(Percent_Cover ~ PSOC + Year + Habitat + Cover_Category,
                        veg_avg, FUN=mean) %>%
+  
   mutate(Percent_Cover = round(Percent_Cover, 1))
 
 # rename species to remove underscore
@@ -75,10 +79,10 @@ nat_ul_list <-ggplot(nat.ul.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
   theme_minimal() +
   geom_tile(color = "black", linewidth = 0.2) +
   scale_fill_gradientn(colours = c("white", "darkseagreen1", "chartreuse4"),
-                       values = scales::rescale(c(0,1,19)),
-                       limits=c(0, 20)) +
+                       values = scales::rescale(c(0,1,25)),
+                       limits=c(0, 26)) +
   geom_text(data = nat.ul.l %>% filter(Percent_Cover > 0),
-    aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+    aes(label = label_percent(accuracy = 0.1, scale = 1)(Percent_Cover)),
         color = "black", size = 3) +
   scale_y_discrete(limits = rev) +
   ggtitle("Native species recorded in upland habitat each year") + 
@@ -107,9 +111,9 @@ nat_wl_list <-ggplot(nat.wl.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
   geom_tile(color = "black", linewidth = 0.2) +
   scale_fill_gradientn(colours = c("white", "darkseagreen1", "chartreuse4"),
                        values = scales::rescale(c(0,1,35)),
-                       limits=c(0, 40)) +
+                       limits=c(0, 50)) +
   geom_text(data = nat.wl.l %>% filter(Percent_Cover > 0),
-            aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+            aes(label = label_percent(accuracy = 0.1, scale = 1)(Percent_Cover)),
             color = "black", size = 3) +
   scale_y_discrete(limits = rev) +
   ggtitle("Native species recorded in wetland habitat each year") + 
@@ -140,7 +144,7 @@ NON.ul
 
 NON.ul.l<-NON.ul %>% 
   pivot_longer(cols =! PSOC, names_to = "Year", values_to = "Percent_Cover")
-
+NON.ul.l
 
 NON.ul.l$Presence<-as.logical(NON.ul.l$Percent_Cover)
 NON_ul_list <-ggplot(NON.ul.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
@@ -150,7 +154,7 @@ NON_ul_list <-ggplot(NON.ul.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
                        values = scales::rescale(c(0,1,95)),
                        limits=c(0, 100)) +
   geom_text(data = NON.ul.l %>% filter(Percent_Cover > 0),
-            aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+            aes(label = label_percent(accuracy = 0.1, scale = 1)(Percent_Cover)),
             color = "black", size = 3) +
   scale_y_discrete(limits = rev) +
   ggtitle("Non-native species recorded in upland habitat each year") + 
@@ -180,7 +184,7 @@ NON_wl_list <-ggplot(NON.wl.l, aes(x=Year, y=`PSOC`, fill=Percent_Cover)) +
                        values = scales::rescale(c(0,1,99)),
                        limits=c(0, 100)) +
   geom_text(data = NON.wl.l %>% filter(Percent_Cover > 0),
-            aes(label = label_percent(accuracy = 1, scale = 1)(Percent_Cover)),
+            aes(label = label_percent(accuracy = 0.1, scale = 1)(Percent_Cover)),
             color = "black", size = 3) +
   scale_y_discrete(limits = rev) +
   ggtitle("Non-native species recorded in wetland habitat each year") + 

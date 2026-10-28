@@ -2,14 +2,14 @@ library(ggfittext)
 library(scales)
 
 getwd()
-veg<-read_csv("processed_data/Seep_2025.csv")
+veg<-read_csv("processed_data/Seep_2026.csv")
 veg$Date<-as.Date(veg$Date,format<-"%m/%d/%Y")
 veg$Year<-format(veg$Date,format<-"%Y")
 print(veg)
 colnames(veg)
 
-# monitored the Phase 2 transects late, both times in February, but we will
-# refer to the data as applying to the previous year
+# monitored the Phase 2 transects late for the 2025 round, both times in 
+# February, but we will refer to the data as applying to the previous year
 start_2024 <- as.Date("2025-01-01")
 end_2024 <- as.Date("2025-02-24")
 start_2025 <- as.Date("2026-01-01")
@@ -29,7 +29,7 @@ vegNNN<-veg[veg$Cover_Category=="NATIVE COVER" |
               veg$Cover_Category=="NON-NATIVE COVER",]
 unique(vegNNN$Cover_Category)
 
-# remove the rows the sum rows
+# remove the sum rows
 vegNNN<-vegNNN[vegNNN$PSOC!="Sum of Native Cover" & 
                  vegNNN$PSOC!="Sum of Non-Native Cover",]
 # sum the percent cover in each phase/habitat type
@@ -128,6 +128,7 @@ for (i in unique_phase) {
 
 #Bar Charts: Relative including bare ground and thatch ----
 unique(veg$Habitat)
+unique(veg$PSOC)
 vegsums<-veg[veg$PSOC=="Bare Ground"|veg$PSOC=="Sum of Thatch Cover"|
                veg$PSOC=="Sum of Non-Native Cover"|veg$PSOC=="Sum of Native Cover"|
                veg$PSOC=="Sum of Other Cover",]
@@ -204,8 +205,8 @@ vegNativespecies
 vegNativeDiversity<-aggregate(count~Habitat+Year,vegNativespecies,FUN=sum)
 vegNativeDiversity
 
-nat25 = vegNativespecies[vegNativespecies$Year=="2025",]
-nat25
+nat26 = vegNativespecies[vegNativespecies$Year=="2026",]
+nat26
 
 #ALL VEG
 # check for misspellings of sum of native and nonnative
@@ -213,7 +214,9 @@ unique_veg <- veg[!duplicated(veg$PSOC), ]
 sorted_unique_customers <- unique_veg[order(unique_veg$PSOC), ]
 sorted_unique_customers[220:250,]
 
-vegonly <- veg[veg$PSOC=="Sum_of_Native_Cover"|veg$PSOC=="Sum_of_Non-Native_Cover",]
+unique(veg$PSOC)
+
+vegonly <- veg[veg$PSOC=="Sum_of Native Cover"|veg$PSOC=="Sum_of Non-Native Cover",]
 vegonlyall <- aggregate(Percent_Cover~Habitat+Transect_Name+Transect_Distance+Year,vegonly,FUN=sum)
 vegonlyallmean <- aggregate(Percent_Cover~Habitat+Year,vegonlyall,FUN=mean)
 

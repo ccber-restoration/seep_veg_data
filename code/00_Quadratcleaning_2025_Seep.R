@@ -167,7 +167,7 @@ parent<- within(parent, Site[Site == "ncosNCOS"] <- 'ncos')
 
 #filter to site == harder_seep
 seep<-parent[parent$Site=="harder_seep",]
-#432 observations
+#552 observations
 
 #list unique transects within Seep
 unique(seep$Transect_Name)
@@ -177,17 +177,18 @@ unique(seep$Transect_Name)
 seep_transects <- unique(seep$Transect_Name)
 
 unique(parent$Transect_Name)
-#284 transects in overall data set
+#303 transects in overall data set
 
 # Check for missing surveys this year ----
-df25<-parent[parent$Year == "2025" & parent$Site=="harder_seep",]
-#240 rows
+df26<-parent[parent$Year == "2026" & parent$Site=="harder_seep",]
+#120 rows; fewer than last year. Looks like surveyors switched from a quadrat
+#every 2 meters to every 3 meters.
 
 #check column names
-colnames(df25)
+colnames(df26)
 
 #group rows by transect name, then summarize quadrat count
-df25grp<-df25%>% 
+df26grp<-df26%>% 
   #group by transect name
   group_by(Transect_Name) %>%
   #summarize by quadrat count
@@ -195,11 +196,10 @@ df25grp<-df25%>%
   #filter to the first rownumber?
   filter(row_number()==1) 
 
-# looks like we did not complete WL4W, WL3W, and U2W in the fall
 
 
 #select subset of columns
-df25grp<-df25grp %>% 
+df26grp<-df26grp %>% 
   select(c(vernal_pool, Transect_Name, Transect_length, quad_Count)) %>% 
   #new column "quadrat_freq" equal to transect length divided by 1 less than the quadrat count
   mutate(quadrat_freq = Transect_length/(quad_Count-1))
@@ -212,7 +212,7 @@ df25grp<-df25grp %>%
 #old code instead of mutate  
 #df25grp <- transform(df25grp, quadrat_freq = Transect_length / (quad_Count - 1))
 
-df25grp
+df26grp
 ## quadrat_frequency should be 2 for vernal pools and 3 for all other transects;
 ## if the number is incorrect, check the data in survey123 for missing/duplicate
 ## quadrats.
@@ -226,7 +226,7 @@ df25grp
 ## statistical analysis on.
 
 natives<-read.csv("original_data/native_plants_begin_1.csv") %>% 
-#33,533 rows
+#39,760 rows
   #select a subset of columns
   select(c(GlobalID:ParentGlobalID)) %>% 
   #rename columns
@@ -258,11 +258,11 @@ unmatched_natives <- anti_join(parent, natives, by = "MasterID")
 # unmatched_natives to identify the culprits. Same for nonnatives below.
 
 # non-natives ----
-nonnatives<-read.csv("original_data/nonnative_plants_begin_2.csv") %>% 
+nonnatives<-read.csv("original_data/nonnative_plants_begin_2.csv")  %>%
   #subset columns
   select(GlobalID:ParentGlobalID) %>%
   rename(GlobalID = GlobalID,
-         Nonnative_species = Non_Native.Species,
+         Nonnative_species = Non.Native.Species,
          unlisted_nonnative = Unlisted.Non.Native.Species,
          Nonnative_pcover = Non.Native.Species.Percent.Cover,
          Nonnative_Notes = Non.Native.Species.Notes,
@@ -272,18 +272,18 @@ nonnatives<-read.csv("original_data/nonnative_plants_begin_2.csv") %>%
     TRUE ~ Nonnative_species)
   )
 
-#33,565 rows
+#39,292 rows
 
 #merge (full join)
 Nonnatives<-merge(parent,nonnatives, by="MasterID", all.x=TRUE, all.y=TRUE)
-# number of rows matches at 33,565
+# number of rows matches at 39,291
 
 unmatched_non_natives <- anti_join(parent, nonnatives, by = "MasterID")
 #no unmatched non-natives
 
 #other cover ----
 othercover<-read.csv("original_data/other_cover_repeat_begin_4.csv") %>% 
-#11,140 rows
+#113,465 rows
   #subset to 6 columns
   select(c(GlobalID:ParentGlobalID)) %>% 
   #rename columns (new name = old name)
@@ -308,11 +308,11 @@ unmatched_othercover <- anti_join(parent, othercover, by = "MasterID")
 
 #subset to non-blank values for other cover
 othercover<-subset(othercover,othercover$Othercover_type!="")
-#drops to 1825
+#drops to 2,487
 
 #unknown plants
 unknownplants<-read.csv("original_data/unknown_plants_begin_3.csv") %>% 
-  #11038 rows
+  #13,310 rows
   #subset to 4 columns
   select(c(GlobalID:ParentGlobalID)) %>% 
   #rename columns 
@@ -331,7 +331,7 @@ unmatched_unknown <- anti_join(parent, unknownplants, by = "MasterID")
 
 #filter out blank rows (i.e. quadrat rows that did not contain unknown species)
 Unknown<-subset(Unknown,Unknown$Unknown_Species_description!="")
-#just 75 observations
+#just 106 observations
 
 #combine data frames ----
 
@@ -347,7 +347,7 @@ Unknown<-subset(Unknown,Unknown$Unknown_Species_description!="")
 masterbareground <- parent %>% 
   select(Date, Monitors, Transect_Name, Site, Transect_length,
          Transect_Distance, Quadrat_Notes, Bare_Ground) %>% 
-  #11034 rows
+  #13309 rows
   #rename column
   rename(Percent_Cover = Bare_Ground)
 
@@ -498,15 +498,15 @@ df <- rbind(
     grepl(pattern = "U", x = Transect_Name) ~ "Upland",
     grepl(pattern = "WL", x = Transect_Name) ~ "Wetland"
   )) 
-  #now 144,442 rows
+  #now 172,371 rows
 
 unique(df$Site)
-#29 unique sites, no NA values
+#32 unique sites, no NA values
 
 #Write processed data to file ----
 
 #write to csv
-write.csv(df,"processed_data/MasterQuadratdata_2026-02-05.csv")
+write.csv(df,"processed_data/MasterQuadratdata_2026-10-28.csv")
 
 #filter to just the Seep
 seep<-df %>% 
@@ -517,9 +517,9 @@ seep<-df %>%
     Transect_Name == "U2W" ~ NA,
     TRUE ~ "Phase 1"
   ))
-# 4,601 observations
+# 5,820 observations
 
 
 #write processed data to file
-write_csv(seep,"processed_data/Seep_2025.csv")
+write_csv(seep,"processed_data/Seep_2026.csv")
 
